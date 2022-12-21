@@ -1,0 +1,23 @@
+{
+  "name": "@homebots/parse-html",
+  "version": "0.0.0-dev",
+  "description": "Strict HTML parser",
+  "main": "./index.js",
+  "typings": "./dist/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist/",
+    "test": "echo true",
+    "tdd": "echo true",
+    "build": "npm run clean && tsc --project ./tsconfig.json && npm run rollup",
+    "rollup": "./node_modules/.bin/rollup -c rollup.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/homebots/elements.git"
+  },
+  "author": "Darlan Alves <me@darlanalv.es>",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,8 @@
+.github
+src/
+coverage/
+rollup.config.js
+tsconfig*
+.cache
+.prettierrc
+karma*
