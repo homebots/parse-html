@@ -1,26 +1,61 @@
-const startTag = "<";
-const endTag = ">";
-const startComment = "!--";
-const docType = "!doctype";
-const forwardSlash = "/";
-const backSlash = "\\";
-const space = " ";
-const newLine = "\n";
-const equals = "=";
+const startTag = '<';
+const endTag = '>';
+const startComment = '!--';
+const docType = '!doctype';
+const forwardSlash = '/';
+const backSlash = '\\';
+const space = ' ';
+const newLine = '\n';
+const equals = '=';
 const doubleQuote = `"`;
 const implicitClose = /^(meta|link|br|hr)$/;
 const validAttribute = /^[a-z][a-z0-9-]+$/;
 
-function parse(html) {
+interface ParserAttribute {
+  name: string;
+  value: string;
+}
+
+interface DocumentNode {
+  type: 'document';
+  docType: string;
+  children: Array<ElementNode | CommentNode | TextNode>;
+}
+
+interface ElementNode {
+  type: 'element';
+  tag: string;
+  selfClose: boolean;
+  children: Array<ElementNode | CommentNode | TextNode>;
+  attributes: Array<ParserAttribute>;
+}
+
+interface CommentNode {
+  type: 'comment';
+  text: string;
+}
+
+interface TextNode {
+  type: 'text';
+  text: string;
+}
+
+type ParserNode = DocumentNode | ElementNode | CommentNode | TextNode;
+
+function parse(html: string) {
   let index = 0;
   let line = 1;
   let column = 1;
   let max = html.length;
-  const root = { type: "document", children: [] };
-  let currentTag = root;
-  const stack = [currentTag];
+
+  const root: DocumentNode = { type: 'document', docType: 'html', children: [] };
+  let currentTag: ParserNode = root;
+  const stack: ParserNode[] = [currentTag];
 
   class Position {
+    line: number;
+    column: number;
+
     constructor(l = line, c = column) {
       this.line = l;
       this.column = c;
@@ -34,9 +69,9 @@ function parse(html) {
   const throwError = (error) => {
     const location = new Position();
     const { line, column } = location;
-    const source = html.split("\n")[line - 1];
+    const source = html.split('\n')[line - 1];
 
-    error.origin = source + "\n" + " ".repeat(column - 2) + "^";
+    error.origin = source + '\n' + ' '.repeat(column - 2) + '^';
     error.location = location;
 
     throw error;
@@ -48,11 +83,7 @@ function parse(html) {
   const current = () => html.charAt(index);
 
   const expectedItemError = (expectedValue) => {
-    throwError(
-      new SyntaxError(
-        `Unexpected "${current()}". Expected ${expectedValue} at ${new Position()}`
-      )
-    );
+    throwError(new SyntaxError(`Unexpected "${current()}". Expected ${expectedValue} at ${new Position()}`));
   };
 
   const expect = (value) => {
@@ -97,7 +128,7 @@ function parse(html) {
   const skipUntil = (condition) => {
     let initialPosition = index;
     let chars = 0;
-    let result = "";
+    let result = '';
 
     iterate(() => {
       if (condition()) {
@@ -129,14 +160,13 @@ function parse(html) {
 
     const text = skipUntil(condition);
 
-    if (text !== "") {
-      currentTag.children.push({ type: "text", tag: "", text });
+    if (text !== '') {
+      (<ElementNode>currentTag).children.push({ type: 'text', text });
       return true;
     }
   };
 
-  const isSelfClosingTag = () =>
-    current() === forwardSlash && next() === endTag;
+  const isSelfClosingTag = () => current() === forwardSlash && next() === endTag;
 
   const isEndOfAttributes = () => current() === endTag || isSelfClosingTag();
 
@@ -151,16 +181,11 @@ function parse(html) {
   };
 
   const parseAttributeName = () => {
-    let name = "";
+    let name = '';
 
     iterate(() => {
       const char = current();
-      if (
-        char === newLine ||
-        char === space ||
-        char === equals ||
-        char === forwardSlash
-      ) {
+      if (char === newLine || char === space || char === equals || char === forwardSlash) {
         return true;
       }
 
@@ -172,16 +197,16 @@ function parse(html) {
       return name;
     }
 
-    expectedItemError("attribute name");
+    expectedItemError('attribute name');
   };
 
   const parseAttributeValue = () => {
-    let value = "";
+    let value = '';
     expect(doubleQuote); // start quote
 
     if (current() === doubleQuote) {
       skip();
-      return "";
+      return '';
     }
 
     iterate(() => {
@@ -198,7 +223,7 @@ function parse(html) {
       return value;
     }
 
-    expectedItemError("attribute value");
+    expectedItemError('attribute value');
   };
 
   const parseAttribute = () => {
@@ -208,33 +233,34 @@ function parse(html) {
       return false;
     }
 
-    let value = "";
+    let value = '';
 
     if (current() === equals) {
       skip();
       value = parseAttributeValue();
     }
 
-    currentTag.attributes.push({ name, value });
+    (<ElementNode>currentTag).attributes.push({ name, value });
 
     return true;
   };
 
   const openTag = (tagName) => {
-    const newTag = {
-      type: "element",
+    const newTag: ElementNode = {
+      type: 'element',
       tag: tagName,
+      selfClose: false,
       attributes: [],
       children: [],
     };
 
     stack.push(newTag);
-    currentTag.children.push(newTag);
+    (<ElementNode>currentTag).children.push(newTag);
     currentTag = newTag;
   };
 
   const closeTag = (selfClose = false) => {
-    currentTag.selfClose = selfClose;
+    (<ElementNode>currentTag).selfClose = selfClose;
     stack.pop();
     currentTag = stack[stack.length - 1];
   };
@@ -245,12 +271,8 @@ function parse(html) {
       skip(2);
       const tagToClose = skipUntil(() => current() === endTag);
 
-      if (currentTag.tag !== tagToClose) {
-        throwError(
-          new SyntaxError(
-            `Expected closing "${currentTag.tag}", found ${tagToClose}`
-          )
-        );
+      if ((<ElementNode>currentTag).tag !== tagToClose) {
+        throwError(new SyntaxError(`Expected closing "${(<ElementNode>currentTag).tag}", found ${tagToClose}`));
       }
 
       closeTag();
@@ -274,23 +296,18 @@ function parse(html) {
       const tagName = skipUntil(() => {
         const char = current();
 
-        return (
-          char === forwardSlash ||
-          char === space ||
-          char === newLine ||
-          char === endTag
-        );
+        return char === forwardSlash || char === space || char === newLine || char === endTag;
       });
 
       if (tagName === startComment) {
-        const comment = skipUntil(() => current() === "-" && next() === "-");
-        currentTag.children.push({ type: "comment", text: comment.trim() });
+        const comment = skipUntil(() => current() === '-' && next() === '-');
+        (<ElementNode>currentTag).children.push({ type: 'comment', text: comment.trim() });
         skip(3);
         return;
       }
 
       if (tagName === docType) {
-        currentTag.docType = skipUntil(() => current() === endTag);
+        (<DocumentNode>currentTag).docType = skipUntil(() => current() === endTag);
         return;
       }
 
@@ -313,34 +330,32 @@ function parse(html) {
       }
 
       if (current() === endTag) {
-        if (implicitClose.test(currentTag.tag)) {
+        if (implicitClose.test((<ElementNode>currentTag).tag)) {
           closeTag(true);
         }
         skip();
         return;
       }
 
-      expectedItemError("end of tag creation");
+      expectedItemError('end of tag creation');
     }
 
     if (parseTextNode()) {
       return;
     }
 
-    if (current() === "") {
+    if (current() === '') {
       return;
     }
 
-    console.log("Unparsed text", html.slice(index));
-    throwError(
-      new SyntaxError(`Unexpected "${current()}" at ${line}:${column}`)
-    );
+    console.log('Unparsed text', html.slice(index));
+    throwError(new SyntaxError(`Unexpected "${current()}" at ${line}:${column}`));
   };
 
   iterate(() => {
     parseNext();
 
-    if (current() === "") {
+    if (current() === '') {
       return true;
     }
   });
@@ -348,11 +363,7 @@ function parse(html) {
   stack.pop();
 
   if (stack.length !== 0) {
-    throwError(
-      new SyntaxError(
-        `Tags not closed: ${stack.length}, ${stack.map((t) => t.type)}`
-      )
-    );
+    throwError(new SyntaxError(`Tags not closed: ${stack.length}, ${stack.map((t) => t.type)}`));
   }
 
   return root;
@@ -360,24 +371,21 @@ function parse(html) {
 
 function serialize(node) {
   switch (node.type) {
-    case "document":
-      return node.children.map(serialize).join("");
+    case 'document':
+      return node.children.map(serialize).join('');
 
-    case "text":
+    case 'text':
       return node.text;
 
-    case "comment":
+    case 'comment':
       return `<!-- ${node.text} -->`;
 
-    case "element":
+    case 'element':
       const attr = node.attributes.length
-        ? " " +
-          node.attributes
-            .map((a) => (a.value !== "" ? `${a.name}="${a.value}"` : a.name))
-            .join(" ")
-        : "";
+        ? ' ' + node.attributes.map((a) => (a.value !== '' ? `${a.name}="${a.value}"` : a.name)).join(' ')
+        : '';
 
-      const children = node.children.map(serialize).join("");
+      const children = node.children.map(serialize).join('');
 
       if (node.selfClose) {
         return `<${node.tag} ${attr}/>`;
@@ -394,7 +402,7 @@ function normalize(node) {
   if (!node.children) return;
 
   node.children = node.children.filter((child) => {
-    if (child.type === "text" && child.text.trim() === "") {
+    if (child.type === 'text' && child.text.trim() === '') {
       return false;
     }
 
@@ -405,28 +413,29 @@ function normalize(node) {
 
 function materialize(node) {
   switch (node.type) {
-    case "document": {
+    case 'document': {
       const doc = document.createDocumentFragment();
-      node.children.map(materialize).forEach((c) => doc.append(c));
+      doc.append(...node.children.map(materialize));
       return doc;
     }
 
-    case "text":
+    case 'text':
       return document.createTextNode(node.text);
 
-    case "comment":
+    case 'comment':
       return document.createComment(node.text);
 
-    case "element": {
+    case 'element': {
       const el = document.createElement(node.tag);
-      el["@attributes"] = node.attributes;
+      el.append(...node.children.map(materialize));
 
-      node.attributes.forEach((a) => {
+      el['@attributes'] = node.attributes;
+      node.attributes.forEach((a: ParserAttribute) => {
         if (validAttribute.test(a.name)) {
           el.setAttribute(a.name, a.value);
         }
       });
-      node.children.map(materialize).forEach((c) => el.append(c));
+
       return el;
     }
 
@@ -436,3 +445,4 @@ function materialize(node) {
 }
 
 export { parse, materialize, serialize, normalize };
+export type { ParserAttribute, ParserNode, ElementNode, DocumentNode, TextNode, CommentNode };
