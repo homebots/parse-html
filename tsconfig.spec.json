@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "es6",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noEmitOnError": true,
+    "types": ["jasmine"]
+  },
+  "exclude": ["node_modules/**"],
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}
