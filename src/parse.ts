@@ -88,7 +88,7 @@ export class Parser {
     this.expectedItemError(value);
   }
 
-  iterate(fn: { (): boolean; (): boolean; (): boolean; (): boolean; (): boolean }) {
+  iterate(fn: () => boolean | undefined) {
     let last = this.index;
     let stop = false;
 
