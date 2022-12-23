@@ -8,11 +8,12 @@ module.exports = function (config) {
       'src/**/*.ts': ['karma-typescript'],
       'test/**/*.ts': ['karma-typescript'],
     },
-    restartOnFileChange: false,
+    restartOnFileChange: true,
     reporters: ['progress', 'karma-typescript'],
     browsers: ['ChromeHeadless'],
     karmaTypescriptConfig: {
       tsconfig: 'tsconfig.spec.json',
+      stopOnFailure: false,
       bundlerOptions: {
         transforms: [require('karma-typescript-es6-transform')()],
       },

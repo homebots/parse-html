@@ -1,4 +1,4 @@
-import type { ParserNode, ElementNode, DocumentNode } from './types';
+import type { ElementNode, DocumentNode } from './types';
 
 const startTag = '<';
 const endTag = '>';
@@ -18,10 +18,10 @@ export class Parser {
   column = 1;
   max = 0;
   root: DocumentNode = { type: 'document', docType: 'html', children: [] };
-  currentTag: ParserNode = this.root;
-  stack: ParserNode[] = [this.currentTag];
+  currentTag: ElementNode | DocumentNode = this.root;
+  stack: ElementNode[] = [this.currentTag as ElementNode];
 
-  constructor(private html: string) {
+  constructor(public html: string) {
     this.max = html.length;
   }
 
@@ -34,10 +34,8 @@ export class Parser {
       }
     });
 
-    this.stack.pop();
-
-    if (this.stack.length !== 0) {
-      this.throwError(new SyntaxError(`Tags not closed: ${this.stack.length}, ${this.stack.map((t) => t.type)}`));
+    if (this.stack.length !== 1) {
+      this.throwError(new SyntaxError(`Some tags are not closed: ${this.stack.slice(1).map((t) => t.tag)}`));
     }
 
     return this.root;
@@ -47,19 +45,19 @@ export class Parser {
     return `${this.line}:${this.column}`;
   }
 
-  private getNext(): string {
+  getNext(): string {
     return this.html.charAt(this.index + 1);
   }
 
-  private getPrevious(): string {
+  getPrevious(): string {
     return this.html.charAt(this.index - 1);
   }
 
-  private getCurrent(): string {
+  getCurrent(): string {
     return this.html.charAt(this.index);
   }
 
-  private throwError<T extends Error>(error: T) {
+  throwError<T extends Error>(error: T) {
     const location = this.position;
     const { line, column } = this;
     const source = this.html.split('\n')[line - 1];
@@ -72,16 +70,17 @@ export class Parser {
     throw error;
   }
 
-  private lookAhead(characterCount: number) {
+  lookAhead(characterCount: number) {
     return this.html.substr(this.index, characterCount);
   }
-  private expectedItemError(expectedValue) {
+
+  expectedItemError(expectedValue: string) {
     this.throwError(
       new SyntaxError(`Unexpected "${this.getCurrent()}". Expected ${expectedValue} at ${this.position}`),
     );
   }
 
-  private expect(value: string) {
+  expect(value: string) {
     if (this.getCurrent() === value) {
       return this.skip();
     }
@@ -89,7 +88,7 @@ export class Parser {
     this.expectedItemError(value);
   }
 
-  private iterate(fn) {
+  iterate(fn: { (): boolean; (): boolean; (): boolean; (): boolean; (): boolean }) {
     let last = this.index;
     let stop = false;
 
@@ -106,7 +105,7 @@ export class Parser {
     }
   }
 
-  private skip(amount = 1) {
+  skip(amount = 1) {
     while (amount) {
       this.index++;
       amount--;
@@ -119,14 +118,12 @@ export class Parser {
       }
     }
   }
-  private skipUntil(condition) {
+  skipUntil(condition: () => boolean) {
     let initialPosition = this.index;
     let chars = 0;
-    let result = '';
 
     this.iterate(() => {
       if (condition()) {
-        result = this.html.substr(initialPosition, chars);
         return true;
       }
 
@@ -134,10 +131,10 @@ export class Parser {
       chars++;
     });
 
-    return result;
+    return this.html.substr(initialPosition, chars);
   }
 
-  private skipSpaces() {
+  skipSpaces() {
     const condition = () => this.getCurrent() !== space && this.getCurrent() !== newLine;
 
     if (!condition()) {
@@ -145,7 +142,7 @@ export class Parser {
     }
   }
 
-  private parseTextNode() {
+  parseTextNode() {
     const condition = () => this.getCurrent() === startTag;
 
     if (condition()) {
@@ -153,9 +150,8 @@ export class Parser {
     }
 
     const text = this.skipUntil(condition);
-
-    if (text !== '') {
-      (<ElementNode>this.currentTag).children.push({
+    if (text) {
+      this.currentTag.children.push({
         type: 'text',
         text,
       });
@@ -163,15 +159,15 @@ export class Parser {
     }
   }
 
-  private isSelfClosingTag() {
+  isSelfClosingTag() {
     return this.getCurrent() === forwardSlash && this.getNext() === endTag;
   }
 
-  private isEndOfAttributes() {
+  isEndOfAttributes() {
     return this.getCurrent() === endTag || this.isSelfClosingTag();
   }
 
-  private parseAttributes() {
+  parseAttributes() {
     while (true) {
       this.skipSpaces();
 
@@ -181,7 +177,7 @@ export class Parser {
     }
   }
 
-  private parseAttributeName() {
+  parseAttributeName() {
     let name = '';
 
     this.iterate(() => {
@@ -201,7 +197,7 @@ export class Parser {
     this.expectedItemError('attribute name');
   }
 
-  private parseAttributeValue() {
+  parseAttributeValue() {
     let value = '';
     this.expect(doubleQuote); // start quote
 
@@ -227,7 +223,7 @@ export class Parser {
     this.expectedItemError('attribute value');
   }
 
-  private parseAttribute() {
+  parseAttribute() {
     const name = this.parseAttributeName();
 
     if (!name) {
@@ -246,7 +242,7 @@ export class Parser {
     return true;
   }
 
-  private openTag(tagName) {
+  openTag(tagName: string) {
     const newTag: ElementNode = {
       type: 'element',
       tag: tagName,
@@ -256,17 +252,17 @@ export class Parser {
     };
 
     this.stack.push(newTag);
-    (<ElementNode>this.currentTag).children.push(newTag);
+    this.currentTag.children.push(newTag);
     this.currentTag = newTag;
   }
 
-  private closeTag(selfClose = false) {
+  closeTag(selfClose = false) {
     (<ElementNode>this.currentTag).selfClose = selfClose;
     this.stack.pop();
     this.currentTag = this.stack[this.stack.length - 1];
   }
 
-  private parseNext() {
+  parseNext() {
     // closing a tag  </...>
     if (this.lookAhead(2) === startTag + forwardSlash) {
       this.skip(2);
@@ -274,7 +270,7 @@ export class Parser {
 
       if ((<ElementNode>this.currentTag).tag !== tagToClose) {
         this.throwError(
-          new SyntaxError(`Expected closing "${(<ElementNode>this.currentTag).tag}", found ${tagToClose}`),
+          new SyntaxError(`Expected closing "${(<ElementNode>this.currentTag).tag}", found "${tagToClose}"`),
         );
       }
 
@@ -284,15 +280,6 @@ export class Parser {
     }
 
     // starting a tag
-    // <input/>
-    // <input type="text"/>
-    // <div>
-    // </div>
-    // <!doctype
-    // <br>
-    // <button
-    //   title="">
-    // <!-- comment
     if (this.getCurrent() === startTag) {
       this.skip(); // <
 
@@ -304,7 +291,7 @@ export class Parser {
 
       if (tagName === startComment) {
         const comment = this.skipUntil(() => this.getCurrent() === '-' && this.getNext() === '-');
-        (<ElementNode>this.currentTag).children.push({
+        this.currentTag.children.push({
           type: 'comment',
           text: comment.trim(),
         });
@@ -343,8 +330,6 @@ export class Parser {
         this.skip();
         return;
       }
-
-      this.expectedItemError('end of tag creation');
     }
 
     if (this.parseTextNode()) {
@@ -355,7 +340,6 @@ export class Parser {
       return;
     }
 
-    console.log('Unparsed text', this.html.slice(this.index));
     this.throwError(new SyntaxError(`Unexpected "${this.getCurrent()}" at ${this.position}`));
   }
 }

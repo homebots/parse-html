@@ -6,7 +6,7 @@
     "esModuleInterop": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noEmitOnError": true,
+    "noEmitOnError": false,
     "types": ["jasmine"]
   },
   "exclude": ["node_modules/**"],
