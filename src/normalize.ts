@@ -9,4 +9,6 @@ export function normalize(node) {
     normalize(child);
     return true;
   });
+
+  return node§§;
 }
