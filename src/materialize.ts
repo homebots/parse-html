@@ -3,13 +3,15 @@ import type { ParserNode, ParserAttribute } from './types';
 const validAttribute = /^[a-z][a-z0-9-]+$/;
 const noop = () => {};
 
-export function materialize(node: ParserNode, visitor: any = noop) {
+export type Visitor = <T>(el: T, node: ParserNode) => T | null | undefined | void;
+
+export function materialize(node: ParserNode, visitor: Visitor = noop) {
   let el: any;
 
   switch (node.type) {
     case 'document': {
       el = document.createDocumentFragment();
-      el.append(...node.children.map(materialize));
+      el.append(...node.children.map((n) => materialize(n, visitor)));
       break;
     }
 
@@ -23,15 +25,14 @@ export function materialize(node: ParserNode, visitor: any = noop) {
 
     case 'element': {
       el = document.createElement(node.tag);
-      el.append(...node.children.map(materialize));
       el['@attributes'] = node.attributes;
-
       node.attributes.forEach((a: ParserAttribute) => {
         if (validAttribute.test(a.name)) {
           el.setAttribute(a.name, a.value);
         }
       });
 
+      el.append(...node.children.map(n => materialize(n, visitor)));
       break;
     }
 

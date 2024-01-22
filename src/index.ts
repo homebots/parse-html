@@ -3,3 +3,4 @@ export { normalize } from './normalize';
 export { parse, Parser } from './parse';
 export { serialize } from './serialize';
 export { materialize } from './materialize';
+export type { Visitor } from './materialize';
