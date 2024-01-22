@@ -30,7 +30,10 @@ normalize(document);
 console.log(serialize(document));
 
 // create DOM elements from document
-console.log(materialize(document));
+console.log(materialize(document, (element, node) => {
+  // do something with the new element
+  // return element or something new
+}));
 ```
 
 # Node types

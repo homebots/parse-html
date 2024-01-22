@@ -1,36 +1,43 @@
-import type { ParserAttribute } from './types';
+import type { ParserNode, ParserAttribute } from './types';
 
 const validAttribute = /^[a-z][a-z0-9-]+$/;
+const noop = () => {};
 
-export function materialize(node) {
+export function materialize(node: ParserNode, visitor: any = noop) {
+  let el: any;
+
   switch (node.type) {
     case 'document': {
-      const doc = document.createDocumentFragment();
-      doc.append(...node.children.map(materialize));
-      return doc;
+      el = document.createDocumentFragment();
+      el.append(...node.children.map(materialize));
+      break;
     }
 
     case 'text':
-      return document.createTextNode(node.text);
+      el = document.createTextNode(node.text);
+      break;
 
     case 'comment':
-      return document.createComment(node.text);
+      el = document.createComment(node.text);
+      break;
 
     case 'element': {
-      const el = document.createElement(node.tag);
+      el = document.createElement(node.tag);
       el.append(...node.children.map(materialize));
-
       el['@attributes'] = node.attributes;
+
       node.attributes.forEach((a: ParserAttribute) => {
         if (validAttribute.test(a.name)) {
           el.setAttribute(a.name, a.value);
         }
       });
 
-      return el;
+      break;
     }
 
     default:
-      throw new Error(`Invalid node type: ${node.type}`);
+      throw new Error(`Invalid node type: ${(node as any).type}`);
   }
+
+  return visitor(el, node) || el;
 }
