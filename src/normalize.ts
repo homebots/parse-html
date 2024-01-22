@@ -10,5 +10,5 @@ export function normalize(node) {
     return true;
   });
 
-  return node§§;
+  return node;
 }
