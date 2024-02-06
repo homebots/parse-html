@@ -10,7 +10,7 @@ const space = ' ';
 const newLine = '\n';
 const equals = '=';
 const doubleQuote = `"`;
-const implicitClose = /^(meta|link|br|hr)$/;
+const implicitClose = /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/;
 
 export class Parser {
   index = 0;
