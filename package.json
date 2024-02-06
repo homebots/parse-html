@@ -4,6 +4,7 @@
   "description": "Strict HTML parser",
   "main": "./index.js",
   "typings": "./dist/index.d.ts",
+  "type": "module",
   "scripts": {
     "clean": "rm -rf dist/",
     "test": "karma start --single-run",

@@ -6,3 +6,5 @@ tsconfig*
 .cache
 .prettierrc
 karma*
+test/
+test.js
