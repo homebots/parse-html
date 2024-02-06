@@ -299,7 +299,7 @@ export class Parser {
         return;
       }
 
-      if (tagName === docType) {
+      if (tagName.toLowerCase() === docType) {
         (<DocumentNode>this.currentTag).docType = this.skipUntil(() => this.getCurrent() === endTag);
         return;
       }
