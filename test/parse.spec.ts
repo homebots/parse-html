@@ -19,10 +19,7 @@ describe('self closing tags', () => {
       type: 'document',
       docType: 'html',
       children: [
-        { type: 'element', tag: 'a', selfClose: false, children: [{
-          type: 'text',
-          text: 'test'
-        }] },
+        { type: 'element', tag: 'a', selfClose: false, children: [{ type: 'text', text: 'test' }], attributes: [] },
       ],
     });
   });
