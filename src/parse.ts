@@ -266,7 +266,7 @@ export class Parser {
     // closing a tag  </...>
     if (this.lookAhead(2) === startTag + forwardSlash) {
       this.skip(2);
-      const tagToClose = this.skipUntil(() => this.getCurrent() === endTag);
+      const tagToClose = this.skipUntil(() => this.getCurrent() === endTag).trim();
 
       if ((<ElementNode>this.currentTag).tag !== tagToClose) {
         this.throwError(

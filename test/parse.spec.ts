@@ -1,7 +1,7 @@
 import { parse } from '../src/index';
 
 describe('self closing tags', () => {
-  it('should autoclose link, meta, br and hr tags', () => {
+  it('should autoclose void elements', () => {
     expect(parse(`<link><meta><br><hr>`)).toEqual({
       type: 'document',
       docType: 'html',
@@ -10,6 +10,19 @@ describe('self closing tags', () => {
         { type: 'element', tag: 'meta', selfClose: true, children: [], attributes: [] },
         { type: 'element', tag: 'br', selfClose: true, children: [], attributes: [] },
         { type: 'element', tag: 'hr', selfClose: true, children: [], attributes: [] },
+      ],
+    });
+  });
+
+  it('should ignore spaces in closing tags', () => {
+    expect(parse(`<a>test</a  >`)).toEqual({
+      type: 'document',
+      docType: 'html',
+      children: [
+        { type: 'element', tag: 'a', selfClose: false, children: [{
+          type: 'text',
+          text: 'test'
+        }] },
       ],
     });
   });
